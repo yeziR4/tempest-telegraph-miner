@@ -40,6 +40,7 @@ output_schema:
     reason: { type: string }
     hazards: { type: array, items: { type: object } }
     source: { type: string }
+    request_defaulted: { type: boolean }
 semantics:
   signal_mapping:
     confidence_field: confidence
@@ -60,4 +61,5 @@ on_chain:
       - index: 0
         name: breach
         source_path: breach
+
 
