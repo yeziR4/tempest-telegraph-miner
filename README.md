@@ -1,6 +1,6 @@
 # Tempest — Telegraph STORM_ALERT Miner
 
-Tempest is a deterministic, inspectable storm-risk miner built for Telegraph's `STORM_ALERT` intent. It accepts a place name or coordinates, reads live hourly data from Open-Meteo, and emits both a canonical label and the underlying hazard evidence.
+Tempest is a deterministic, inspectable storm-risk miner built for Telegraph's `STORM_ALERT` intent. It accepts a place name or coordinates, reads live hourly data from Open-Meteo with automatic MET Norway failover, and emits both a canonical label and the underlying hazard evidence.
 
 Read [HACKATHON-INTELLIGENCE.md](./HACKATHON-INTELLIGENCE.md) before registration. It records the important Explorer and Discord findings, operational traps, and the exact public questions to ask the Telegraph team.
 

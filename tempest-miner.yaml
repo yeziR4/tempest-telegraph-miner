@@ -5,7 +5,10 @@ slug: tempest-storm-intelligence
 protocol: generic
 name: Tempest Storm Intelligence
 description: Deterministic global storm alerts with transparent thresholds, hazard timing, confidence, and source provenance for autonomous agents.
-base_url: https://REPLACE_WITH_DEPLOYED_HOST
+base_url: https://tempest-telegraph-miner.onrender.com
+docs:
+  website: https://tempest-telegraph-miner.onrender.com/health
+  repository: https://github.com/yeziR4/tempest-telegraph-miner
 auth:
   type: none
 endpoints:

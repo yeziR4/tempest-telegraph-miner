@@ -45,10 +45,36 @@ async function forecast(location, hours) {
   url.searchParams.set("forecast_hours", String(hours));
   url.searchParams.set("timezone", "UTC");
   const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`forecast source returned ${response.status}`);
-  const data = await response.json();
-  if (!data.hourly?.time?.length) throw new Error("forecast source returned no hourly data");
-  return data.hourly;
+  if (response.ok) {
+    const data = await response.json();
+    if (data.hourly?.time?.length) return { hourly: data.hourly, source: "Open-Meteo forecast API" };
+  }
+
+  // Render and other shared hosts can occasionally inherit an upstream 429.
+  // MET Norway provides an independent, global, keyless fallback.
+  const fallback = new URL("https://api.met.no/weatherapi/locationforecast/2.0/compact");
+  fallback.searchParams.set("lat", location.latitude);
+  fallback.searchParams.set("lon", location.longitude);
+  const met = await fetch(fallback, {
+    headers: { "user-agent": "Tempest-Telegraph-Miner/0.1 github.com/yeziR4/tempest-telegraph-miner" },
+    signal: AbortSignal.timeout(10_000)
+  });
+  if (!met.ok) throw new Error(`forecast sources unavailable (primary ${response.status}, fallback ${met.status})`);
+  const points = (await met.json()).properties?.timeseries?.slice(0, hours) ?? [];
+  if (!points.length) throw new Error("forecast sources returned no hourly data");
+  const hourly = { time: [], temperature_2m: [], precipitation: [], snowfall: [], weather_code: [], wind_gusts_10m: [] };
+  for (const point of points) {
+    const instant = point.data?.instant?.details ?? {};
+    const next = point.data?.next_1_hours ?? point.data?.next_6_hours ?? {};
+    const symbol = String(next.summary?.symbol_code ?? "");
+    hourly.time.push(String(point.time).replace(/:00Z$/, ""));
+    hourly.temperature_2m.push(Number(instant.air_temperature ?? 0));
+    hourly.precipitation.push(Number(next.details?.precipitation_amount ?? 0));
+    hourly.snowfall.push(symbol.includes("snow") ? Number(next.details?.precipitation_amount ?? 0) : 0);
+    hourly.weather_code.push(symbol.includes("thunder") ? 95 : 0);
+    hourly.wind_gusts_10m.push(Number(instant.wind_speed_of_gust ?? instant.wind_speed ?? 0) * 3.6);
+  }
+  return { hourly, source: "MET Norway Locationforecast API" };
 }
 
 export async function handler(req, res) {
@@ -64,8 +90,8 @@ export async function handler(req, res) {
     const input = { ...Object.fromEntries(url.searchParams), ...body };
     const hours = Math.min(72, Math.max(1, Number(input.hours ?? input.window_hours ?? 24)));
     const location = await resolveLocation(input);
-    const hourly = await forecast(location, hours);
-    return json(res, 200, scoreForecast(hourly, location, hours));
+    const result = await forecast(location, hours);
+    return json(res, 200, { ...scoreForecast(result.hourly, location, hours), source: result.source });
   } catch (error) {
     return json(res, 400, { error: error.message, intent: "STORM_ALERT" });
   }
