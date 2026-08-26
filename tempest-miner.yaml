@@ -1,6 +1,6 @@
 version: "1"
 kind: miner
-id: REPLACE_WITH_REGISTERED_NUMERIC_ID
+id: 8262601
 slug: tempest-storm-intelligence
 protocol: generic
 name: Tempest Storm Intelligence
@@ -13,32 +13,33 @@ auth:
   type: none
 endpoints:
   - path: /v1/storm-alert
+    external_path: /v1/storm-alert
     method: POST
     description: Assess storm hazards for a place or coordinates over the next 1 to 72 hours.
-    input_schema:
-      type: object
-      properties:
-        location: { type: string }
-        latitude: { type: number, minimum: -90, maximum: 90 }
-        longitude: { type: number, minimum: -180, maximum: 180 }
-        hours: { type: integer, minimum: 1, maximum: 72 }
-      anyOf:
-        - required: [location]
-        - required: [latitude, longitude]
-    output_schema:
-      type: object
-      required: [intent, label, level, breach, confidence, risk, summary, hazards, source]
-      properties:
-        intent: { type: string }
-        label: { type: string }
-        level: { type: string, enum: [none, advisory, warning, emergency] }
-        breach: { type: boolean }
-        confidence: { type: number, minimum: 0, maximum: 1 }
-        risk: { type: number, minimum: 0, maximum: 1 }
-        summary: { type: string }
-        reason: { type: string }
-        hazards: { type: array }
-        source: { type: string }
+input_schema:
+  type: object
+  properties:
+    location: { type: string }
+    latitude: { type: number, minimum: -90, maximum: 90 }
+    longitude: { type: number, minimum: -180, maximum: 180 }
+    hours: { type: integer, minimum: 1, maximum: 72 }
+  anyOf:
+    - required: [location]
+    - required: [latitude, longitude]
+output_schema:
+  type: object
+  required: [intent, label, level, breach, confidence, risk, summary, hazards, source]
+  properties:
+    intent: { type: string }
+    label: { type: string }
+    level: { type: string, enum: [none, advisory, warning, emergency] }
+    breach: { type: boolean }
+    confidence: { type: number, minimum: 0, maximum: 1 }
+    risk: { type: number, minimum: 0, maximum: 1 }
+    summary: { type: string }
+    reason: { type: string }
+    hazards: { type: array, items: { type: object } }
+    source: { type: string }
 semantics:
   signal_mapping:
     confidence_field: confidence
@@ -59,3 +60,4 @@ on_chain:
       - index: 0
         name: breach
         source_path: breach
+
