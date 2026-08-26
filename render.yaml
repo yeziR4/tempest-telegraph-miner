@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: tempest-telegraph-miner
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
