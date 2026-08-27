@@ -1,4 +1,5 @@
 import http from "node:http";
+import { pathToFileURL } from "node:url";
 import { scoreForecast } from "./risk.js";
 
 const port = Number(process.env.PORT ?? 3000);
@@ -15,6 +16,35 @@ async function readBody(req) {
     if (raw.length > 32_768) throw new Error("request body too large");
   }
   return raw ? JSON.parse(raw) : {};
+}
+
+const cleanPlace = (value) => String(value ?? "")
+  .replace(/[?.!,;]+$/g, "")
+  .replace(/\b(?:over|during|within|for)\s+(?:the\s+)?(?:next\s+)?\d+\s*(?:hours?|days?)\b.*$/i, "")
+  .replace(/\b(?:tomorrow|today|tonight|this weekend|next week)\b.*$/i, "")
+  .trim();
+
+export function parseRequest(input = {}) {
+  const query = String(input.query ?? input.q ?? input.question ?? "").trim();
+  let hours = Number(input.hours ?? input.window_hours ?? input.forecast_hours);
+  if (!Number.isFinite(hours)) {
+    const dayValue = Number(input.days ?? input.forecast_days);
+    if (Number.isFinite(dayValue)) hours = dayValue * 24;
+  }
+  if (!Number.isFinite(hours) && query) {
+    const duration = query.match(/\b(?:next|over|during|within|for)?\s*(\d+)\s*(hours?|hrs?|days?)\b/i);
+    if (duration) hours = Number(duration[1]) * (/day/i.test(duration[2]) ? 24 : 1);
+    else if (/\b(?:tomorrow|next 48 hours)\b/i.test(query)) hours = 48;
+    else if (/\b(?:this weekend|next week)\b/i.test(query)) hours = 168;
+  }
+  hours = Math.min(384, Math.max(1, Number.isFinite(hours) ? hours : 48));
+
+  let location = cleanPlace(input.location ?? input.place ?? input.city);
+  if (!location && query) {
+    const match = query.match(/\b(?:in|for|near|at)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .,'’-]{1,80}?)(?=\s+(?:over|during|within|for|in)\s+(?:the\s+)?(?:next\s+)?\d+\s*(?:hours?|days?)|\s+(?:tomorrow|today|tonight|this weekend|next week)|[?.!,;]|$)/i);
+    if (match) location = cleanPlace(match[1]);
+  }
+  return { ...input, query, location: location || undefined, hours };
 }
 
 async function resolveLocation(input) {
@@ -90,8 +120,8 @@ export async function handler(req, res) {
   if (!["/storm", "/v1/storm-alert"].includes(url.pathname)) return json(res, 404, { error: "not found" });
   try {
     const body = await readBody(req);
-    const input = { ...Object.fromEntries(url.searchParams), ...body };
-    const hours = Math.min(72, Math.max(1, Number(input.hours ?? input.window_hours ?? 24)));
+    const input = parseRequest({ ...Object.fromEntries(url.searchParams), ...body });
+    const hours = input.hours;
     const location = await resolveLocation(input);
     const result = await forecast(location, hours);
     return json(res, 200, { ...scoreForecast(result.hourly, location, hours), source: result.source, request_defaulted: Boolean(location.request_defaulted) });
@@ -100,5 +130,7 @@ export async function handler(req, res) {
   }
 }
 
-if (process.env.NODE_ENV !== "test") http.createServer(handler).listen(port, () => console.log(`Tempest listening on ${port}`));
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  http.createServer(handler).listen(port, () => console.log(`Tempest listening on ${port}`));
+}
 
