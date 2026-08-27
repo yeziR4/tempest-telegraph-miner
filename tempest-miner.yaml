@@ -58,6 +58,9 @@ output_schema:
     end_time: { type: [string, "null"] }
     peak_at: { type: [string, "null"] }
     max_wind_gust_kmh: { type: number }
+    max_wind_speed_kmh: { type: number }
+    wind_direction: { type: [string, "null"] }
+    max_precipitation_mm: { type: number }
     total_precipitation_mm: { type: number }
     thunderstorm: { type: boolean }
     source: { type: string }
