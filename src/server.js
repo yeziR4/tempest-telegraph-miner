@@ -74,7 +74,7 @@ async function forecast(location, hours) {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", location.latitude);
   url.searchParams.set("longitude", location.longitude);
-  url.searchParams.set("hourly", "temperature_2m,precipitation,snowfall,weather_code,wind_gusts_10m");
+  url.searchParams.set("hourly", "temperature_2m,precipitation,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m");
   url.searchParams.set("forecast_hours", String(hours));
   url.searchParams.set("timezone", "UTC");
   const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
@@ -95,7 +95,7 @@ async function forecast(location, hours) {
   if (!met.ok) throw new Error(`forecast sources unavailable (primary ${response.status}, fallback ${met.status})`);
   const points = (await met.json()).properties?.timeseries?.slice(0, hours) ?? [];
   if (!points.length) throw new Error("forecast sources returned no hourly data");
-  const hourly = { time: [], temperature_2m: [], precipitation: [], snowfall: [], weather_code: [], wind_gusts_10m: [] };
+  const hourly = { time: [], temperature_2m: [], precipitation: [], snowfall: [], weather_code: [], wind_speed_10m: [], wind_gusts_10m: [], wind_direction_10m: [] };
   for (const point of points) {
     const instant = point.data?.instant?.details ?? {};
     const next = point.data?.next_1_hours ?? point.data?.next_6_hours ?? {};
@@ -105,7 +105,9 @@ async function forecast(location, hours) {
     hourly.precipitation.push(Number(next.details?.precipitation_amount ?? 0));
     hourly.snowfall.push(symbol.includes("snow") ? Number(next.details?.precipitation_amount ?? 0) : 0);
     hourly.weather_code.push(symbol.includes("thunder") ? 95 : 0);
+    hourly.wind_speed_10m.push(Number(instant.wind_speed ?? 0) * 3.6);
     hourly.wind_gusts_10m.push(Number(instant.wind_speed_of_gust ?? instant.wind_speed ?? 0) * 3.6);
+    hourly.wind_direction_10m.push(Number(instant.wind_from_direction ?? 0));
   }
   return { hourly, source: "MET Norway Locationforecast API" };
 }
