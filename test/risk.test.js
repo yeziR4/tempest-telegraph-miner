@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { scoreForecast } from "../src/risk.js";
+import { parseRequest } from "../src/server.js";
 
 const location = { name: "Lagos", country: "Nigeria", latitude: 6.45, longitude: 3.4 };
 const hourly = (overrides = {}) => ({
@@ -25,4 +26,19 @@ test("detects WMO thunderstorm codes", () => {
   const result = scoreForecast(hourly({ weather_code: [2, 96] }), location, 2);
   assert.equal(result.thunderstorms, true);
   assert.equal(result.level, "warning");
+  assert.equal(result.verdict, "high");
+  assert.equal(result.storm_expected, true);
+  assert.equal(result.thunderstorm, true);
 });
+
+test("parses natural-language location and duration", () => {
+  const input = parseRequest({ query: "Is a storm expected in Miami over the next 48 hours?" });
+  assert.equal(input.location, "Miami");
+  assert.equal(input.hours, 48);
+});
+
+test("supports day aliases and caps the forecast window", () => {
+  assert.equal(parseRequest({ location: "Lagos", days: 3 }).hours, 72);
+  assert.equal(parseRequest({ location: "Lagos", forecast_days: 30 }).hours, 384);
+});
+
