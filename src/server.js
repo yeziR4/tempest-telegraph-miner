@@ -1,6 +1,7 @@
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { scoreForecast } from "./risk.js";
+import { dashboardHtml, observatoryData } from "./dashboard.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const json = (res, status, body) => {
@@ -115,6 +116,14 @@ async function forecast(location, hours) {
 export async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
   if (url.pathname === "/health") return json(res, 200, { status: "ok", service: "tempest-miner" });
+  if (url.pathname === "/dashboard") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+    return res.end(dashboardHtml);
+  }
+  if (url.pathname === "/v1/observatory") {
+    try { return json(res, 200, await observatoryData()); }
+    catch (error) { return json(res, 502, { error: error.message }); }
+  }
   if (url.pathname === "/miner.yaml") {
     res.writeHead(302, { location: "https://example.com/tempest-miner.yaml" });
     return res.end();
